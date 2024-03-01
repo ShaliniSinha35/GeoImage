@@ -22,10 +22,24 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "permissions": ["CAMERA", "ACCESS_FINE_LOCATION"]
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+       
+      ],
+      "package": "com.shalinisinha2.MobileApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "d2759799-8df5-4fb8-b230-473fd4bee168"
+      }
     }
   }
 }

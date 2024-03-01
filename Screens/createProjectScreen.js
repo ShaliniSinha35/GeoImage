@@ -261,7 +261,7 @@ const createProjectScreen = () => {
   }, []);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container}  keyboardShouldPersistTaps="handled" >
       <Text allowFontScaling={false}
         style={{
           height: 1,
@@ -290,10 +290,9 @@ const createProjectScreen = () => {
         validationSchema={validationSchema}
 
       >
-        {({ handleChange, handleBlur, handleSubmit, values, errors }) => (
+        {({ handleChange, handleBlur, handleSubmit, values, errors, isValid, isSubmitting }) => (
           <View>
             {/* District dropdown */}
-
             <View style={{ margin: 5 }}>
 
               <Text>District*</Text>
@@ -453,7 +452,9 @@ const createProjectScreen = () => {
 
 
             {/* Your submit button */}
-            <Button onPress={handleSubmit} title="Submit" />
+            <Button   onPress={handleSubmit} 
+            isDisabled={!isValid || isSubmitting}
+            isLoading={isSubmitting} title="Submit" />
           </View>
         )}
       </Formik>

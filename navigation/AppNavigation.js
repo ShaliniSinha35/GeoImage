@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../Screens/HomeScreen';
+import DemoScreen from '../Screens/DemoScreen';
 import createProjectScreen from '../Screens/createProjectScreen';
 import { AntDesign } from '@expo/vector-icons';
 const Tab = createBottomTabNavigator();
@@ -10,7 +11,7 @@ const AppNavigation = () => {
         <Tab.Navigator>
             <Tab.Screen
                 name="Home"
-                component={HomeScreen}
+                component={DemoScreen}
                 options={{
                     tabBarLabel: "Home",
                     tabBarLabelStyle: { color: "black" },
