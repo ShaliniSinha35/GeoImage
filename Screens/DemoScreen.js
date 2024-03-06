@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, TextInput, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, Button, TextInput, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Image,BackHandler } from 'react-native';
 import { Formik } from 'formik';
 import * as yup from 'yup';
 import { Picker } from '@react-native-picker/picker';
@@ -14,6 +14,8 @@ import CameraPreview from '../Components/CameraPreview';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import VideoRecorder from '../Components/VideoRecorder';
 import * as FileSystem from 'expo-file-system';
+import { AntDesign } from '@expo/vector-icons';
+import MapView, { Marker } from 'react-native-maps';
 const validationSchema = yup.object().shape({
   district: yup.string().required('District is required'),
   // block: yup.string().required('Block is required'),
@@ -26,7 +28,7 @@ const validationSchema = yup.object().shape({
   // latLong: yup.string().required('Lat & Long is required'),
   shortDetail: yup.string().max(250, 'Short Detail should be at most 250 characters'),
 
-   
+
 });
 // "react-native-formik": "^1.7.8",
 
@@ -41,10 +43,27 @@ const initialValues = {
   uniqueCode: uuid.v4(),
   latLong: '',
   shortDetail: '',
- 
+
 };
 
-const DemoScreen = () => {
+const DemoScreen = ({navigation}) => {
+
+
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPressButton);
+
+    return () => {
+      // Remove the event listener when the component is unmounted
+      backHandler.remove();
+    };
+  }, []);
+
+  const handleBackPressButton = () => {
+    handleBackPress()
+
+    return true;
+  }; 
 
 
   const [cameraRef, setCameraRef] = useState(null);
@@ -52,40 +71,50 @@ const DemoScreen = () => {
   const [hasCameraPermission, setHasCameraPermission] = useState(null);
   const [imageArray, setImageArray] = useState([]);
   const [hasAudioPermission, setHasAudioPermission] = useState(null);
-  const [startCamera,setStartCamera] = React.useState(false)
+  const [startCamera, setStartCamera] = React.useState(false)
   const [previewVisible, setPreviewVisible] = useState(false)
   const [capturedImage, setCapturedImage] = useState(null)
   const [hasMediaLibraryPermission, setHasMediaLibraryPermission] = useState(null);
+  const [videoArray,setVideoArray] = useState(null)
 
 
   const getLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
-      const locationData = await Location.getCurrentPositionAsync({enableHighAccuracy: true,
-        accuracy: Location.Accuracy.High});
+        const locationSubscription = await Location.watchPositionAsync(
+          {
+            enableHighAccuracy: true,
+            accuracy: Location.Accuracy.BestForNavigation
 
-        console.log("85",locationData.coords)
-        // console.log('Location Data:', locationData);
-        // console.log(locationData)
-        setLocation(locationData.coords);
+          },
+          (newLocation) => {
+            // console.log("Location:", newLocation.coords);
+            // console.log("Accuracy:", newLocation.coords.accuracy);
+            setLocation(newLocation.coords);
+          }
+        );
+  
+       
       } else {
         console.log('Location permission denied');
       }
     } catch (error) {
       console.error('Error getting location:', error);
-    } 
+    }
   };
-
-
+  
   useEffect(() => {
-    getLocation()
-  },[])
-
+    getLocation();
+  
+  }, []);
+  
 
   const takePicture = async () => {
 
-    console.log("107",imageArray.length)
+
+
+    // console.log("107", imageArray.length)
 
     if (imageArray.length >= 4) {
       Alert.alert(
@@ -94,33 +123,33 @@ const DemoScreen = () => {
       );
       return;
     }
-  
+
     if (cameraRef) {
       try {
-      
-        const accuracyThreshold = 20; // Set your desired accuracy threshold in meters
-  
+
+        const accuracyThreshold = 10; // Set your desired accuracy threshold in meters
+
         if (location.accuracy <= accuracyThreshold) {
           const photo = await cameraRef.takePictureAsync();
 
-          
+
           const imageWithLocation = await addLocationToImage(photo.uri);
-  
+
           // Resize and compress image to approximately 1 MB
           const resizedImage = await resizeImage(imageWithLocation);
-  
+
           // Check resized photo size
           const fileSizeInBytes = await getPhotoSize(resizedImage.uri);
           const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
-  
-          if (fileSizeInMB > 1) {
+
+          if (fileSizeInMB < 1) {
             Alert.alert('Photo Size Limit Exceeded', 'Photo size should be 1 MB or less.');
             return;
           }
 
           setPreviewVisible(true)
           setCapturedImage(photo)
-  
+
           // Add the image information to the array
           setImageArray([
             ...imageArray,
@@ -128,15 +157,16 @@ const DemoScreen = () => {
               uri: resizedImage.uri,
               latitude: location.latitude,
               longitude: location.longitude,
+              accuracy:location.accuracy,
               dateTime: new Date(),
             },
           ]);
-        } 
+        }
         else {
           // Location accuracy does not meet the threshold, consider waiting for a more accurate location
           Alert.alert(
             'Location Accuracy Warning',
-            'Location accuracy should be within 5 meters. Please wait for a more accurate location.'
+            'Location accuracy should be within 10 meters. Please wait for a more accurate location.'
           );
         }
       } catch (error) {
@@ -144,7 +174,7 @@ const DemoScreen = () => {
       }
     }
   };
-  
+
 
   const addLocationToImage = async (uri) => {
     try {
@@ -178,12 +208,20 @@ const DemoScreen = () => {
         [{ resize: { width: 1024 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
       );
+  
+      // Log the size of the resized image
+      const resizedSize = await getPhotoSize(resizedImage.uri);
+      console.log('Resized Image Size (bytes):', resizedSize, 'bytes');
+      console.log('Resized Image Size (KB):', resizedSize / 1024, 'KB');
+  
+      await MediaLibrary.saveToLibraryAsync(resizedImage.uri);
       return resizedImage;
     } catch (error) {
       console.error('Error resizing image:', error);
       return { uri };
     }
   };
+  
 
 
   const districts = [
@@ -260,25 +298,25 @@ const DemoScreen = () => {
   ]
 
 
-    
+
   const handleSubmitForm = async (values) => {
 
-console.log(imageArray.length)
-console.log("Form submitted:", values);
-if(values.district == "" || values.nameOfActivity == "" || imageArray.length == 0){
-  Alert.alert('Validation Error', 'Please fill in all required fields.');
-  return;
-}
+    // console.log(imageArray.length)
+    // console.log("Form submitted:", values);
+    if (values.district == "" || values.nameOfActivity == "" || imageArray.length == 0) {
+      Alert.alert('Validation Error', 'Please fill in all required fields.');
+      return;
+    }
 
-  
 
-    console.log("Form submitted:", values);
 
-    console.log(values.district, values.nameOfActivity, imageArray.length)
+    // console.log("Form submitted:", values);
+
+    // console.log(values.district, values.nameOfActivity, imageArray.length)
   };
-  
+
   const deletePhoto = (index) => {
-    
+
     const updatedImageArray = [...imageArray];
     updatedImageArray.splice(index, 1);
     setImageArray(updatedImageArray);
@@ -299,23 +337,24 @@ if(values.district == "" || values.nameOfActivity == "" || imageArray.length == 
 
     })();
   }, []);
-  useEffect(()=>{
+  useEffect(() => {
     setStartCamera(false)
     setCapturedImage(null)
     setPreviewVisible(false)
-  },[])
+  }, [])
 
 
   const __startCamera = async () => {
-    if (imageArray.length >= 4) {
-        Alert.alert(
-          'Maximum 4 photos allowed',
-          'You already took 4 photos.'
-        );
-        return;
-      }
+    if (imageArray.length >= 4)
+     {
+      Alert.alert(
+        'Maximum 4 photos allowed',
+        'You already took 4 photos.'
+      );
+      return;
+    }
 
-    const {status} = await Camera.requestCameraPermissionsAsync()
+    const { status } = await Camera.requestCameraPermissionsAsync()
     if (status === 'granted') {
       // start the camera
       setStartCamera(true)
@@ -326,15 +365,21 @@ if(values.district == "" || values.nameOfActivity == "" || imageArray.length == 
   }
 
   const __retakePicture = (uri) => {
-    console.log(uri)
+    // console.log(uri)
 
-    const newArr = imageArray.filter((image)=>{
-        console.log(image.uri,uri)
+    const newArr = imageArray.filter((image) => {
+      console.log(image.uri, uri)
     })
-    console.log("344",newArr)
+    console.log("344", newArr)
     setCapturedImage(null)
     setPreviewVisible(false)
     __startCamera()
+  }
+
+  const handleBackPress = ()=>{
+    setStartCamera(false)
+    setCapturedImage(null)
+    setPreviewVisible(false)
   }
 
 
@@ -361,293 +406,349 @@ if(values.district == "" || values.nameOfActivity == "" || imageArray.length == 
   };
 
 
+
+
+
+
  
+
   return (
 
-    startCamera ? 
-    previewVisible && capturedImage ? (
-        <CameraPreview photo={capturedImage} savePhoto={saveToGallery} retakePicture={__retakePicture}/>
-      ) :  <>
+    startCamera ?
+      previewVisible && capturedImage ? (
+        <CameraPreview photo={capturedImage} savePhoto={saveToGallery} retakePicture={__retakePicture} handleBack ={handleBackPress} />
+      ) : <>
 
-      <Camera
-     ref={(ref) => setCameraRef(ref)}
-     style={{flex: 1,width:"100%"}}
-     type={Camera.Constants.Type.back}
-   />
-      <Text style={{position:"absolute",top:40,left:10,color:"white"}}>
-         Lat: {location?.latitude}, Long: {location?.longitude}, Accuracy : {location?.accuracy}
-       </Text>
-       <View
-         style={{
-         position: 'absolute',
-         bottom: 0,
-         flexDirection: 'row',
-         flex: 1,
-         width: '100%',
-         padding: 20,
-         justifyContent: 'space-between'
-         }}
-       >
-         <View
-         style={{
-         alignSelf: 'center',
-         flex: 1,
-         alignItems: 'center'
-         }}
-         >
-             <TouchableOpacity
-             onPress={takePicture}
-             style={{
-             width: 70,
-             height: 70,
-             bottom: 0,
-             borderRadius: 50,
-             backgroundColor: '#fff'
-             }}
-             />
-     </View>
-     </View>
-       
-     </>
-  
-            
+        <Camera
+          ref={(ref) => setCameraRef(ref)}
+          style={{ flex: 1, width: "100%" }}
+          type={Camera.Constants.Type.back}
+        />
+        <Text style={{ position: "absolute", top: 60, left: 10, color: "white" }}>
+          Lat: {location?.latitude}, Long: {location?.longitude}, Accuracy : {location?.accuracy.toFixed(2)}
+        </Text>
+
+        <TouchableOpacity style={{position:"absolute",right:10,top:25}} onPress={()=>handleBackPress()}>
+
+        <AntDesign name="close" size={30} color="white"  />
+        </TouchableOpacity>
+
+
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            flexDirection: 'row',
+            flex: 1,
+            width: '100%',
+            padding: 20,
+            justifyContent: 'space-between'
+          }}
+        >
+          <View
+            style={{
+              alignSelf: 'center',
+              flex: 1,
+              alignItems: 'center'
+            }}
+          >
+            <TouchableOpacity
+              onPress={takePicture}
+              style={{
+                width: 70,
+                height: 70,
+                bottom: 0,
+                borderRadius: 50,
+                backgroundColor: '#fff',
+                borderColor:"#9d0208",
+                borderWidth:4
+              }}
+            />
+          </View>
+        </View>
+
+      </>
+
+
+
+
+      :
+      //  <VideoRecorder></VideoRecorder>
+      <ScrollView style={styles.container}>
+        <Text allowFontScaling={false}
+          style={{
+            height: 1,
+            borderColor: "#D0D0D0",
+            borderWidth: 2,
+            marginTop: 10,
+            marginBottom: 10,
+
+          }}
+        />
+
+        <Text style={{ textAlign: "center", fontSize: 18 }}>Create New Project</Text>
+        <Text allowFontScaling={false}
+          style={{
+            height: 1,
+            borderColor: "#D0D0D0",
+            borderWidth: 2,
+            marginTop: 10,
+            marginBottom: 20,
+
+          }}
+        />
+        <Formik
+          initialValues={initialValues}
+          onSubmit={(values, { setSubmitting }) => {
+            // Manually check for validation errors
+            validationSchema.validate(values, { abortEarly: false })
+              .then(() => {
+                // Validation successful, proceed with form submission
+                // console.log("Form submitted:", values);
+              })
+              .catch(errors => {
+                // Validation failed, update UI with errors
+                // console.log("Validation errors:", errors);
+                Alert.alert('Validation Error', 'Please fill in all required fields.');
+              })
+              .finally(() => setSubmitting(false));
+          }}
+          validationSchema={validationSchema}
+
+
+        >
+          {({ handleChange, handleBlur, handleSubmit, values, errors, isValid, isSubmitting }) => (
+
+            <View style={{ marginBottom: 60 }}>
+
+              {/* District dropdown */}
+              <View style={{ margin: 5 }}>
+
+                <Text>District*</Text>
+                <View style={styles.inputBox}>
+                  <Picker
+                    selectedValue={values.district}
+                    onValueChange={handleChange('district')}
+                    onBlur={handleBlur('district')
+                    }
+                  >
+                    <Picker.Item label="Select District" value="" />
+                    {
+                      districts.map((item) => (
+                        <Picker.Item key={item.key} label={item.name} value={item.name} />
+                      ))
+                    }
+
+
+
+                    {/* Add other district options similarly */}
+                  </Picker>
+                  {errors.district && <Text style={{ color: 'red' }}>{errors.district}</Text>}
+                </View>
+
+              </View>
+
+
+              {/* name of Activity */}
+              <View style={{ margin: 5 }}>
+
+                <Text>Name of Activity*</Text>
+                <View style={styles.inputBox}>
+                  <Picker
+                    selectedValue={values.nameOfActivity}
+                    onValueChange={handleChange('nameOfActivity')}
+                    onBlur={handleBlur('nameOfActivity')}
+                  >
+                    <Picker.Item label="Select Activity" value="" />
+                    <Picker.Item label="Structure" value="Structure" />
+                    <Picker.Item label="Training" value="Training" />
+                    <Picker.Item label="Interview" value="Interview" />
+                    <Picker.Item label="Livestock" value="Livestock" />
+                    <Picker.Item label="Seeds" value="Seeds" />
+                  </Picker>
+                  {errors.nameOfActivity && <Text style={{ color: 'red' }}>{errors.nameOfActivity}</Text>}
+                </View>
+
+              </View>
+
+
+              {/* Auto unique code */}
+
+              <View style={{ margin: 5 }} >
+                <Text>Code*</Text>
+                <TextInput
+                  onChangeText={handleChange('uniqueCode')}
+                  onBlur={handleBlur('uniqueCode')}
+                  value={values.uniqueCode}
+                  style={{ padding: 20, backgroundColor: "#fdfcfc" }}
+                />
+              </View>
+
+
+
+              <TouchableOpacity
+                onPress={__startCamera}
+                style={{
+                  width: 180,
+                  borderRadius: 4,
+                  backgroundColor: '#14274e',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: 50,
+                  marginBottom: 20
+                }}
+              >
+
+                <MaterialCommunityIcons name="camera" size={24} color="white" />
+                <Text
+                  style={{
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    marginLeft: 5
+                  }}
+                >
+                  Take picture
+                </Text>
+              </TouchableOpacity>
+
+
+              <View style={{ flexDirection: "row" }}>
+                {/* {console.log(imageArray[0])} */}
+                {imageArray.map((photo, index) => (
+                  <View key={index} style={{ marginVertical: 10, marginRight: 5 }}>
+                    <Image source={{ uri: photo.uri }} style={{ width: 80, height: 80 }} />
+                
+                    <Text>Accuracy: {photo.accuracy.toFixed(2)}</Text>
+                    <TouchableOpacity onPress={() => deletePhoto(index)} style={styles.deleteButton}>
+                      <MaterialIcons name="delete" size={24} color="#e9ecef" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+
+
+
+              {imageArray.length != 0 &&
+                <>
+
+                  {/* latitude */}
+                  <View style={{ margin: 5 }} >
+                    <Text>Latitude *</Text>
+                    <TextInput
+                      placeholder="Latitude"
+
+                      defaultValue={String(imageArray[0].latitude)}
+
+
+                      style={{ padding: 20, backgroundColor: "#fdfcfc" }}
+
+                    />
+
+
+                  </View>
+
+
+
+
+
+
+                  {/* longitude */}
+
+                  <View style={{ margin: 5 }} >
+                    <Text>Longitude*</Text>
+                    <TextInput
+                      placeholder="Longitude"
+                      defaultValue={String(imageArray[0].longitude)}
+                      style={{ padding: 20, backgroundColor: "#fdfcfc" }}
+
+                    />
+
+                  </View>
+
+
+                  {/* short Details */}
+                  <View style={{ margin: 5 }} >
+                    <Text>Short Details*</Text>
+                    <TextInput
+                      placeholder="Enter Short Details"
+                      onChangeText={handleChange('shortDetail')}
+                      onBlur={handleBlur('shortDetail')}
+                      value={values.shortDetail}
+                      style={{ padding: 20, backgroundColor: "#fdfcfc" }}
+                      numberOfLines={4}
+
+                    />
+                    {errors.shortDetail && <Text style={{ color: 'red' }}>{errors.shortDetail}</Text>}
+                  </View>
+                </>
+              }
+
+
+
+              {/* <VideoRecorder></VideoRecorder> */}
+
+
+              {/* <TouchableOpacity
+                onPress={()=>navigation.navigate("video")}
+                style={{
+                  width: 180,
+                  borderRadius: 4,
+                  backgroundColor: '#14274e',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: 50,
+                  marginBottom: 20
+                }}
+              >
+
+                <MaterialCommunityIcons name="camera" size={24} color="white" />
+                <Text
+                  style={{
+                    color: '#fff',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    marginLeft: 5
+                  }}
+                >
+                  Take Video
+                </Text>
+              </TouchableOpacity> */}
+
+
+              <Button
+                onPress={() => {
+                  if (Object.keys(errors).length === 0 || !errors.photos) {
+                    handleSubmitForm(values);
+                  } else {
+                    // Handle validation errors, e.g., show an alert or update UI
+                    Alert.alert('Validation Error', 'Please fill in all required fields.');
+                  }
+                }}
+                title="Submit"
+                disabled={Object.keys(errors).length > 0 && !!errors.photos}
+              />
+
+
+
+            </View>
+
+          )}
+        </Formik>
+
 
  
-       : 
-       <VideoRecorder></VideoRecorder>
-//     <ScrollView style={styles.container}>
-//       <Text allowFontScaling={false}
-//         style={{
-//           height: 1,
-//           borderColor: "#D0D0D0",
-//           borderWidth: 2,
-//           marginTop: 10,
-//           marginBottom: 10,
 
-//         }}
-//       />
 
-//       <Text style={{ textAlign: "center", fontSize: 18 }}>Create New Project</Text>
-//       <Text allowFontScaling={false}
-//         style={{
-//           height: 1,
-//           borderColor: "#D0D0D0",
-//           borderWidth: 2,
-//           marginTop: 10,
-//           marginBottom: 20,
 
-//         }}
-//       />
-//       <Formik
-//         initialValues={initialValues}
-//         onSubmit={(values, { setSubmitting }) => {
-//           // Manually check for validation errors
-//           validationSchema.validate(values, { abortEarly: false })
-//             .then(() => {
-//               // Validation successful, proceed with form submission
-//               // console.log("Form submitted:", values);
-//             })
-//             .catch(errors => {
-//               // Validation failed, update UI with errors
-//               // console.log("Validation errors:", errors);
-//               Alert.alert('Validation Error', 'Please fill in all required fields.');
-//             })
-//             .finally(() => setSubmitting(false));
-//         }}
-//         validationSchema={validationSchema}
-    
 
-//       >
-//         {({ handleChange, handleBlur, handleSubmit, values, errors, isValid, isSubmitting }) => (
-          
-//           <View style={{marginBottom:60}}>
+        
          
-//             {/* District dropdown */}
-//             <View style={{ margin: 5 }}>
-
-//               <Text>District*</Text>
-//               <View style={styles.inputBox}>
-//                 <Picker
-//                   selectedValue={values.district}
-//                   onValueChange={handleChange('district')}
-//                   onBlur={handleBlur('district')
-//                 }
-//                 >
-//                   <Picker.Item label="Select District" value="" />
-//                   {
-//                     districts.map((item) => (
-//                       <Picker.Item key={item.key} label={item.name} value={item.name} />
-//                     ))
-//                   }
-
-
-
-//                   {/* Add other district options similarly */}
-//                 </Picker>
-//                 {errors.district && <Text style={{ color: 'red' }}>{errors.district}</Text>}
-//               </View>
-
-//             </View>
-
-
-//             {/* name of Activity */}
-//             <View style={{ margin: 5 }}>
-
-//               <Text>Name of Activity*</Text>
-//               <View style={styles.inputBox}>
-//                 <Picker
-//                   selectedValue={values.nameOfActivity}
-//                   onValueChange={handleChange('nameOfActivity')}
-//                   onBlur={handleBlur('nameOfActivity')}
-//                 >
-//                   <Picker.Item label="Select Activity" value="" />
-//                   <Picker.Item label="Structure" value="Structure" />
-//                   <Picker.Item label="Training" value="Training" />
-//                   <Picker.Item label="Interview" value="Interview" />
-//                   <Picker.Item label="Livestock" value="Livestock" />
-//                   <Picker.Item label="Seeds" value="Seeds" />
-//                 </Picker>
-//                 {errors.nameOfActivity && <Text style={{ color: 'red' }}>{errors.nameOfActivity}</Text>}
-//               </View>
-
-//             </View>
-
-
-//             {/* Auto unique code */}
-
-//             <View style={{ margin: 5 }} >
-//               <Text>Code*</Text>
-//               <TextInput
-//                 onChangeText={handleChange('uniqueCode')}
-//                 onBlur={handleBlur('uniqueCode')}
-//                 value={values.uniqueCode}
-//                 style={{ padding: 20, backgroundColor: "#fdfcfc" }}
-//               />
-//             </View>
-
         
 
-//             <TouchableOpacity
-//         onPress={__startCamera}
-//           style={{
-//             width: 130,
-//             borderRadius: 4,
-//             backgroundColor: '#14274e',
-//             flexDirection: 'row',
-//             justifyContent: 'center',
-//             alignItems: 'center',
-//             height: 40,
-//             marginBottom:20
-//           }}
-//         >
-
-//           <MaterialCommunityIcons name="camera" size={24} color="white"/>
-//           <Text
-//             style={{
-//               color: '#fff',
-//               fontWeight: 'bold',
-//               textAlign: 'center',
-//               marginLeft:5
-//             }}
-//           >
-//             Take picture
-//           </Text>
-//         </TouchableOpacity> 
-
-
-//         <View style={{ flexDirection: "row" }}>
-//                   {console.log(imageArray)}
-//                   {imageArray.map((photo, index) => (
-//                     <View key={index} style={{ marginVertical: 10, marginRight: 5 }}>
-//                       <Image source={{ uri: photo.uri }} style={{ width: 80, height: 80 }} />
-//                       <TouchableOpacity onPress={() => deletePhoto(index)} style={styles.deleteButton}>
-//                       <MaterialIcons name="delete" size={24} color="#e9ecef" />
-//                 </TouchableOpacity>
-//                     </View>
-//                   ))}
-//                 </View>
-
-
-
-//         {imageArray.length != 0 &&
-//               <>
-
-//                 {/* latitude */}
-//                 <View style={{ margin: 5 }} >
-//                   <Text>Latitude *</Text>
-//                   <TextInput
-//                     placeholder="Latitude"
-
-//                     defaultValue={String(imageArray[0].latitude)}
-
-
-//                     style={{ padding: 20, backgroundColor: "#fdfcfc" }}
-
-//                   />
-
-
-//                 </View>
-
-
-
-            
-
-
-//                 {/* longitude */}
-
-//                 <View style={{ margin: 5 }} >
-//                   <Text>Longitude*</Text>
-//                   <TextInput
-//                     placeholder="Longitude"
-//                     defaultValue={String(imageArray[0].longitude)}
-//                     style={{ padding: 20, backgroundColor: "#fdfcfc" }}
-
-//                   />
-
-//                 </View>
-
-
-//                 {/* short Details */}
-//                 <View style={{ margin: 5 }} >
-//                   <Text>Short Details*</Text>
-//                   <TextInput
-//                     placeholder="Enter Short Details"
-//                     onChangeText={handleChange('shortDetail')}
-//                     onBlur={handleBlur('shortDetail')}
-//                     value={values.shortDetail}
-//                     style={{ padding: 20, backgroundColor: "#fdfcfc" }}
-//                     numberOfLines={4}
-
-//                   />
-//                   {errors.shortDetail && <Text style={{ color: 'red' }}>{errors.shortDetail}</Text>}
-//                 </View>
-//               </>
-//              }
-
-
-// <VideoRecorder></VideoRecorder>
-
-
-
-// <Button
-//   onPress={() => {
-//     if (Object.keys(errors).length === 0 || !errors.photos) {
-//       handleSubmitForm(values);
-//     } else {
-//       // Handle validation errors, e.g., show an alert or update UI
-//       Alert.alert('Validation Error', 'Please fill in all required fields.');
-//     }
-//   }}
-//   title="Submit"
-//   disabled={Object.keys(errors).length > 0 && !!errors.photos}
-// />
-
-// </View>
-           
-//         )}
-//       </Formik>
-
-//     </ScrollView>
+      </ScrollView>
 
 
 
@@ -666,7 +767,7 @@ const styles = StyleSheet.create({
     width: Dimensions.get('screen').width,
     padding: 20,
     paddingTop: 50,
-    paddingBottom:50
+    paddingBottom: 50
 
   },
   inputBox: {
@@ -685,7 +786,7 @@ const styles = StyleSheet.create({
     height: Dimensions.get('window').height / 2,
   },
 
- 
+
   captureButton: {
     alignSelf: 'center',
     margin: 20,
@@ -705,5 +806,29 @@ const styles = StyleSheet.create({
 
 
 
+// {imageArray.length !== 0 && (
+//   <>
+    
+//     <MapView
+//       style={{ flex: 1, height: 200 }}
+//       initialRegion={{
+//         latitude: imageArray[0].latitude,
+//         longitude: imageArray[0].longitude,
+//         latitudeDelta: 0.01, // Adjust as needed
+//         longitudeDelta: 0.01, // Adjust as needed
+//       }}
+//     >
+     
+//       <Marker
+//         coordinate={{
+//           latitude: imageArray[0].latitude,
+//           longitude: imageArray[0].longitude,
+//         }}
+//         title="Image Location"
+//         description="This is where the image was taken."
+//       />
+//     </MapView>
 
  
+//   </>
+// )}

@@ -55,17 +55,8 @@ const HomeScreen = () => {
   const [value,setValue] = useState(null);
   const [recording, setRecording] = useState(false);
   const [videoUri, setVideoUri] = useState('');
-
-
-
-  
-
   const [hasPermission, setHasPermission] = useState(null);
   const videoRef = useRef(null);
-
-
-
-
 
 
   const getLocation = async () => {
@@ -73,7 +64,7 @@ const HomeScreen = () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
       const locationData = await Location.getCurrentPositionAsync({enableHighAccuracy: true,
-        accuracy: Location.Accuracy.High});
+        accuracy: Location.Accuracy.Highest});
 
         console.log("85",locationData.coords)
         // console.log('Location Data:', locationData);
@@ -87,12 +78,9 @@ const HomeScreen = () => {
     } 
   };
 
-
-
   useEffect(() => {
     getLocation()
   },[])
-
 
 
   const takePicture = async () => {
@@ -163,9 +151,6 @@ const HomeScreen = () => {
     }
   };
   
-  
-  
-
 
   const addLocationToImage = async (uri) => {
     try {

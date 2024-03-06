@@ -1,9 +1,27 @@
-import { View, Text, ImageBackground, TouchableOpacity } from 'react-native'
-import React from 'react'
+import { View, Text, ImageBackground, TouchableOpacity,BackHandler } from 'react-native'
+import React, {useEffect,useState} from 'react'
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const CameraPreview = ({ photo, savePhoto, retakePicture }) => {
-    console.log('sdsfds', photo)
+
+const CameraPreview = ({ photo, savePhoto, retakePicture,handleBack }) => {
+    // console.log('sdsfds', photo)
+
+
+    useEffect(() => {
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+    
+        return () => {
+          // Remove the event listener when the component is unmounted
+          backHandler.remove();
+        };
+      }, []);
+    
+      const handleBackPress = () => {
+        handleBack()
+        // Handle the back press event here, for example, navigate to the home screen
+        // navigation.navigate('Home'); // Change 'HomeScreen' to the actual name of your home screen
+        return true; // Prevent default behavior (exit the app) when the back button is pressed
+      }; 
 
     return (
         <View
@@ -14,6 +32,7 @@ const CameraPreview = ({ photo, savePhoto, retakePicture }) => {
                 height: '100%'
             }}
         >
+           
             <ImageBackground
                 source={{ uri: photo && photo.uri }}
                 style={{
@@ -31,6 +50,8 @@ const CameraPreview = ({ photo, savePhoto, retakePicture }) => {
                      <Text style={{color:"white"}}>Save Photo</Text>
                      </TouchableOpacity>
             </View>
+
+          
         </View>
     )
 }

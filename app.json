@@ -36,6 +36,18 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+
+    "plugins": [
+      [
+        
+        "expo-media-library",
+        {
+          "photosPermission": "Allow app to access your photos.",
+          "savePhotosPermission": "Allow app to save photos.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "d2759799-8df5-4fb8-b230-473fd4bee168"
