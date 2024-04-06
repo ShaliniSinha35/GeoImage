@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, Button, TextInput, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Image,BackHandler } from 'react-native';
 import { Formik } from 'formik';
@@ -16,6 +17,7 @@ import VideoRecorder from '../Components/VideoRecorder';
 import * as FileSystem from 'expo-file-system';
 import { AntDesign } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
+import * as MediaLibrary from 'expo-media-library';
 const validationSchema = yup.object().shape({
   district: yup.string().required('District is required'),
   // block: yup.string().required('Block is required'),
@@ -140,10 +142,11 @@ const DemoScreen = ({navigation}) => {
 
           // Check resized photo size
           const fileSizeInBytes = await getPhotoSize(resizedImage.uri);
-          const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
+          const fileSizeInKB = fileSizeInBytes / 1024;
+          console.log(fileSizeInKB,"fileSizeInKB")
 
-          if (fileSizeInMB < 1) {
-            Alert.alert('Photo Size Limit Exceeded', 'Photo size should be 1 MB or less.');
+          if (fileSizeInKB > 240) {
+            Alert.alert('Photo Size Limit Exceeded', 'Photo size should be 250 KB or less.');
             return;
           }
 
@@ -201,20 +204,31 @@ const DemoScreen = ({navigation}) => {
   };
 
 
-  const resizeImage = async (uri) => {
-    try {
-      const resizedImage = await ImageManipulator.manipulateAsync(
-        uri,
-        [{ resize: { width: 1024 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
-      );
   
-      // Log the size of the resized image
-      const resizedSize = await getPhotoSize(resizedImage.uri);
+  const resizeImage = async (uri, maxSizeKB = 240) => {
+    try {
+      const targetSizeBytes = maxSizeKB * 1024; // Convert KB to bytes
+  
+     
+      let compressionQuality = 1.0;
+      let resizedImage, resizedSize;
+  
+      do {
+        resizedImage = await ImageManipulator.manipulateAsync(
+          uri,
+          [{ resize: { width: 1024 } }],
+          { compress: compressionQuality, format: ImageManipulator.SaveFormat.JPEG }
+        );
+  
+        resizedSize = await getPhotoSize(resizedImage.uri);
+  
+    
+        compressionQuality -= 0.1;
+  
+      } while (resizedSize > targetSizeBytes && compressionQuality > 0);
+  
       console.log('Resized Image Size (bytes):', resizedSize, 'bytes');
       console.log('Resized Image Size (KB):', resizedSize / 1024, 'KB');
-  
-      await MediaLibrary.saveToLibraryAsync(resizedImage.uri);
       return resizedImage;
     } catch (error) {
       console.error('Error resizing image:', error);
@@ -296,6 +310,7 @@ const DemoScreen = ({navigation}) => {
     },
 
   ]
+
 
 
 
@@ -387,16 +402,20 @@ const DemoScreen = ({navigation}) => {
     setStartCamera(false)
     setCapturedImage(null)
     setPreviewVisible(false)
+
+    const resizedImage = await resizeImage(uri);
+
+
     try {
       if (!hasMediaLibraryPermission) {
         throw new Error('Missing MEDIA_LIBRARY permissions.');
       }
 
-      const asset = await MediaLibrary.createAssetAsync(uri);
-      const album = await MediaLibrary.getAlbumAsync('YourAlbumName');
+      const asset = await MediaLibrary.createAssetAsync(resizedImage.uri);
+      const album = await MediaLibrary.getAlbumAsync('Images');
 
       if (album === null) {
-        await MediaLibrary.createAlbumAsync('YourAlbumName', asset, false);
+        await MediaLibrary.createAlbumAsync('Images', asset, false);
       } else {
         await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
       }
@@ -405,12 +424,6 @@ const DemoScreen = ({navigation}) => {
     }
   };
 
-
-
-
-
-
- 
 
   return (
 

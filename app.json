@@ -23,15 +23,12 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "CAMERA",
-        "ACCESS_FINE_LOCATION",
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.RECORD_AUDIO"
-       
       ],
-      "package": "com.shalinisinha2.MobileApp"
+      "package": "com.geolocation.MobileApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,12 +36,18 @@
 
     "plugins": [
       [
-        
         "expo-media-library",
         {
-          "photosPermission": "Allow app to access your photos.",
-          "savePhotosPermission": "Allow app to save photos.",
-          "isAccessMediaLocationEnabled": true
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos.",
+          "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos.",
+          "isAccessMediaLocationEnabled": "true"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
       ]
     ],
