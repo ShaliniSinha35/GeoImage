@@ -14,15 +14,18 @@ import {
 import React, { useState, useEffect } from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import { AntDesign } from "@expo/vector-icons";
+import { FontAwesome,Entypo } from '@expo/vector-icons';
 import axios from "axios";
 import { useSelector, useDispatch } from 'react-redux';
 import { SET_EMPLOYEE_VALUE } from "../redux/actions/Employee";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from "./AuthContext";
+
 const LoginPage = ({navigation}) => {
     const [empId, setEmpId] = useState('');
     const [password, setPassword] = useState("");
+    const [hidePass, setHidePass] = useState(true);
 
     const [flag, setFlag] = useState(false);
     const [error, setErr] = useState("");
@@ -58,7 +61,7 @@ const LoginPage = ({navigation}) => {
     const handleSubmit = async () => {
         if (isFormValid) {
 
-
+            let errors = {};
             axios.get(`https://geolocation-backend-1.onrender.com/verify`, {
                 params: {
                     empId: empId,
@@ -67,6 +70,7 @@ const LoginPage = ({navigation}) => {
             })
                 .then(response => {
                     const data = response.data;
+                    console.log(data,"data")
                     if (data.length != 0) {
                         console.log("Successfully Login", data);
                         const storeData = async (value) => {
@@ -83,6 +87,15 @@ const LoginPage = ({navigation}) => {
                         navigation.navigate("Home")
 
                     }
+
+                    else{
+                        errors.incorrect="You have entered wrong credentials"
+                        setErr(errors);
+                        setTimeout(() => {
+                            setErr("")
+                        },5000);
+                       
+                    }
                 })
                 .catch(error => {
                     console.error("Error:", error);
@@ -90,7 +103,7 @@ const LoginPage = ({navigation}) => {
                 });
         } else {
             setFlag(true);
-            alert("you have entered the wrong Employee ID and Password. Please correct them.");
+            // alert("you have entered the wrong Employee ID and Password. Please correct them.");
             setEmpId("");
             setPassword("");
         }
@@ -111,9 +124,11 @@ const LoginPage = ({navigation}) => {
             <Text style={styles.heading}>Employee Login</Text>
         </View>
 
+        {error.incorrect && <Text style={{color:"#DA5050",margin:5,alignItems:"center",textAlign:"center"}}>{error.incorrect}</Text>}
+
         <View style={{  }}>
             <View style={styles.inputBoxCont}>
-
+            <FontAwesome name="user" size={24} color="#403d39" style={{marginRight:8}} />
 
                 <TextInput
                     value={empId}
@@ -127,17 +142,22 @@ const LoginPage = ({navigation}) => {
                     placeholder="Enter your Employee ID"
                 />
             </View>
-            {error.empId && flag && <Text>{error.empId}</Text>}
+            {error.empId && flag && <Text style={{color:"#DA5050"}}>{error.empId}</Text>}
         </View>
 
         <View style={{ marginTop: 1 }}>
             <View style={styles.inputBoxCont}>
 
+            {
+                    hidePass ?   <Entypo name="eye-with-line" onPress={()=>setHidePass(!hidePass)}  size={24}   color="black"
+                    style={{ marginRight: 8 }} />: <Entypo name="eye" onPress={()=>setHidePass(!hidePass)} size={24} color="black"  style={{ marginRight: 8 }} />
+                 
+                }
 
                 <TextInput
                     value={password}
                     onChangeText={(text) => setPassword(text)}
-                    secureTextEntry={true}
+                    secureTextEntry={hidePass ? true : false}
                     style={{
                         color: "gray",
                         marginVertical: 10,
@@ -147,7 +167,7 @@ const LoginPage = ({navigation}) => {
                     placeholder="Password"
                 />
             </View>
-            {error.password && flag && <Text>{error.password}</Text>}
+            {error.password && flag && <Text style={{color:"#DA5050"}}>{error.password}</Text>}
         </View>
 
 

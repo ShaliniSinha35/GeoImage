@@ -4,35 +4,21 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ResizeMode } from 'expo-av';
 import { FontAwesome } from '@expo/vector-icons';
-import Section1 from '../Components/Section1';
 const width = Dimensions.get('screen').width
 const height= Dimensions.get('screen').height
-import { useSelector, useDispatch } from 'react-redux';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from './AuthContext';
-import Header from '../Components/Header';
+import { useAuth } from '../Screens/AuthContext';
 
 
 
+  
 
-const HomePage = ({navigation}) => {
-
-
-  const {employee,employeeId} = useAuth()
-  // console.log("employee",employee)
+const Header = ({navigation}) => {
+    const {employee,employeeId} = useAuth()
   const [empId,setEmpId] = useState(employeeId)
 
-
-
-
-
-
-
-
   return (
-
-<View style={{backgroundColor:"#b9d6f2",height:height,width:width}}>
-       {/* <View style={{width:width, backgroundColor:"#001349"}}>
+    <View>
+      <View style={{width:width, backgroundColor:"#001349"}}>
 
 <View style={{width:width, flexDirection:"row",alignItems:"center",padding:10,justifyContent:"space-around"}}>
 
@@ -50,14 +36,9 @@ const HomePage = ({navigation}) => {
 
 </View>
 
-       </View> */}
-
-       <Header navigation={navigation}></Header>
-
-<Section1 navigation={navigation}></Section1>
+       </View>
     </View>
- 
   )
 }
 
-export default HomePage
+export default Header

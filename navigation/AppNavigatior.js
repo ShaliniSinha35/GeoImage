@@ -4,7 +4,6 @@ import HomeScreen from '../Screens/HomeScreen';
 import { createStackNavigator } from '@react-navigation/stack';
 import { AntDesign } from '@expo/vector-icons';
 import VideoRecorder from '../Components/VideoRecorder';
-import LoginScreen from '../Screens/LoginScreen';
 import { FontAwesome } from '@expo/vector-icons';
 import HomePage from '../Screens/HomePage';
 import { Ionicons, Entypo } from '@expo/vector-icons';
@@ -17,6 +16,7 @@ import ProjectsScreen from '../Screens/ProjectsScreen';
 import LoginPage from '../Screens/LoginPage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../Screens/AuthContext';
+import ProjectAssign from '../Screens/ProjectAssign';
 
 
 const Stack = createStackNavigator();
@@ -65,7 +65,7 @@ export const AppNavigator = () => {
         {
             id: 1,
             name: "My Profile",
-            url: "profile",
+            url: "Profile",
             icon: <FontAwesome name="user" size={24} color="white" />,
         },
         {
@@ -138,6 +138,12 @@ export const AppNavigator = () => {
                 <Stack.Screen
                     name="addProject"
                     component={HomeScreen}
+                    options={{ headerShown: false }}
+                />
+
+<Stack.Screen
+                    name="projectAssign"
+                    component={ProjectAssign}
                     options={{ headerShown: false }}
                 />
 

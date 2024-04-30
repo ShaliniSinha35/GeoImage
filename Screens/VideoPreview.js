@@ -4,7 +4,7 @@ import React from 'react'
 const VideoPreview = () => {
   return (
     <View>
-      <Text>Y</Text>
+      <Text></Text>
     </View>
   )
 }

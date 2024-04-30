@@ -1,7 +1,7 @@
 import { View, Text, ImageBackground, TouchableOpacity,BackHandler } from 'react-native'
 import React, {useEffect,useState} from 'react'
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
+import { FontAwesome } from '@expo/vector-icons';
 
 const CameraPreview = ({ photo, savePhoto, retakePicture,handleBack }) => {
     // console.log('sdsfds', photo)
@@ -46,7 +46,7 @@ const CameraPreview = ({ photo, savePhoto, retakePicture,handleBack }) => {
                      <Text style={{color:"white"}}>ReTake Photos</Text>
                      </TouchableOpacity> */}
                   <TouchableOpacity onPress={() => savePhoto(photo.uri)} style={{alignItems:"center",justifyContent:"center"}}>
-                    <MaterialCommunityIcons name="download" size={24} color="white" />
+                  <FontAwesome name="bookmark" size={24} color="white" />
                      <Text style={{color:"white"}}>Save Photo</Text>
                      </TouchableOpacity>
             </View>

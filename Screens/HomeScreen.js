@@ -20,6 +20,7 @@ import MapView, { Marker } from 'react-native-maps';
 import * as MediaLibrary from 'expo-media-library';
 import axios from "axios";
 import { useAuth } from './AuthContext';
+import { useRoute } from '@react-navigation/native';
 
 
 
@@ -28,22 +29,51 @@ import { useAuth } from './AuthContext';
 
 const HomeScreen = ({navigation}) => {
 
+  const route = useRoute()
+
+
+
+  const [assignDist,setAssignDist]=useState('')
+
+
+  useEffect(()=>{
+
+    if(route.params){
+      setAssignDist(route.params.district)
+    }
+  },[route.params])
+
+
 
 const {employeeId} = useAuth()
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPressButton);
 
-    return () => {
-      // Remove the event listener when the component is unmounted
-      backHandler.remove();
-    };
-  }, []);
+const [values, setValues] = useState(
+  {
+  district: assignDist,
+  block: '',
+  panchayat: '',
+  village: '',
+  projectArea: '',
+  activity: '',
+  nameOfActivity: '',
+  shortDetail: '',
+  image:''
+}
+);
+  // useEffect(() => {
+  //   const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPressButton);
 
-  const handleBackPressButton = () => {
-    handleBackPress()
+  //   return () => {
+  //     // Remove the event listener when the component is unmounted
+  //     backHandler.remove();
+  //   };
+  // }, []);
 
-    return true;
-  }; 
+  // const handleBackPressButton = () => {
+  //   handleBackPress()
+
+  //   return true;
+  // }; 
 
 
   const [cameraRef, setCameraRef] = useState(null);
@@ -67,6 +97,7 @@ const {employeeId} = useAuth()
   const [activityName, setActivityName] = useState(null)
 
 
+
   const [errors, setErrors] = useState(
     {
       district: '',
@@ -77,8 +108,12 @@ const {employeeId} = useAuth()
       activity: '',
       nameOfActivity: '',
       shortDetail: '',
+      image:''
     
   }); 
+  const [flag, setFlag] = useState(false);
+  const [error, setErr] = useState("");
+  const [isFormValid, setIsFormValid] = useState(false);
 
   const getDistrict = async()=>{
 
@@ -272,6 +307,7 @@ const {employeeId} = useAuth()
               dateTime: new Date(),
              },
           ]);
+          setValues({ ...values, image: imageArray })
         }
         else {
           // Location accuracy does not meet the threshold, consider waiting for a more accurate location
@@ -345,18 +381,7 @@ const {employeeId} = useAuth()
   };
   
 
-  const [values, setValues] = useState(
-    {
-    district: '',
-    block: '',
-    panchayat: '',
-    village: '',
-    projectArea: '',
-    activity: '',
-    nameOfActivity: '',
-    shortDetail: '',
-  }
-);
+ 
 
 
 
@@ -368,6 +393,16 @@ const {employeeId} = useAuth()
   const handleBlur = (field) => () => {
     // Implement validation logic for onBlur event if needed
   };
+
+
+  // const validateForm=()=>{
+  
+
+
+     
+
+  //   setIsFormValid(Object.keys(errors).length === 0);
+  // }
 
   const handleSubmit = async() => {
 
@@ -396,6 +431,12 @@ const {employeeId} = useAuth()
         errors.nameOfActivity = "Activity Name is Required"
       }
 
+      console.log(values.image)
+
+      if(imageArray.length==0){
+        errors.image="Image is Required"
+      }
+
 
 setErrors({ ...errors})
 setTimeout(() => {
@@ -408,6 +449,7 @@ setTimeout(() => {
     activity: '',
     nameOfActivity: '',
     shortDetail: '',
+    image:''
  })
 },3000);
 
@@ -415,12 +457,13 @@ setTimeout(() => {
 if( values.block!="" && values.district !="" && values.panchayat!="" &&
    values.village!="" && values.projectArea!= "" && values.activity!="" && values.nameOfActivity!="" && imageArray.length >= 1){
 
-  console.log('Form submitted with values:', values, imageArray);
+  
     
   try {
 
     // https://geolocation-backend-1.onrender.com/
     // https://geolocation-backend-1.onrender.com/
+    
     const response = await axios.post('https://geolocation-backend-1.onrender.com/addProject', {
       emp_id: employeeId,
       dist:values.district,
@@ -435,6 +478,15 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
     });
 
     console.log('Post successful:', response.data);
+     
+    if(response.data){
+
+        for(let i=0;i<imageArray.length;i++){
+          console.log("442",imageArray[i].uri)
+             uploadImage(imageArray[i].uri,response.data) 
+        }
+    }
+
     Alert.alert('Success', 'Project submitted successfully');
 
 
@@ -471,16 +523,16 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
 
 
 
-  const uploadImage = async (imageUri) => {
+  const uploadImage = async (imageUri,pid) => {
     const formData = new FormData();
     formData.append('image', {
       uri: imageUri, 
       type: 'image/jpeg', // Adjust according to your image type
-      name: 'photo.jpg', // Use any desired file name here
+      name: `Img${pid}.jpg`, // Use any desired file name here
     });
   
     try {
-      const response = await axios.post('http://your-server-ip:3000/upload', formData, {
+      const response = await axios.post('https://geolocation-backend-1.onrender.com/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -683,27 +735,52 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
               <View style={{ margin: 5 }}>
 
                 <Text>District*</Text>
+
+
+                  {
+                    assignDist ?   <TextInput
+                    defaultValue={route.params.district}
+                    editable={false}
+                    style={{ padding: 10, backgroundColor: "#fdfcfc",   borderWidth:2,
+                    borderColor:"black",
+                    borderRadius:15, marginTop:5,color:"black"}}
+                  />
+                  
+                  :
+
                 <View style={styles.inputBox}>
+
                   <Picker
-             selectedValue={values.district}
-             onValueChange={(itemValue, itemIndex) => {
-               setValues({ ...values, district: itemValue }); // Update district value
-             }}
-           
-                  >
-                    <Picker.Item label="Select District" value="" />
-                    {
-                       dist!= null &&  dist.map((item) => (
-                        <Picker.Item key={item.key} label={item.name} value={item.name} />
-                      ))
-                    }
-
-
-
-                    {/* Add other district options similarly */}
-                  </Picker>
-                  {errors.district && <Text style={{ color: 'red' }}>{errors.district}</Text>}
+                  selectedValue={values.district}
+                  onValueChange={(itemValue, itemIndex) => {
+                    setValues({ ...values, district: itemValue }); // Update district value
+                  }}
+                
+                       >
+     
+                    
+                         <Picker.Item label="Select District" value="" />
+                         {
+                            dist!= null &&  dist.map((item) => (
+                             <Picker.Item key={item.key} label={item.name} value={item.name} />
+                           ))
+                         }
+     
+     
+     
+                         {/* Add other district options similarly */}
+                       </Picker>
+                           
                 </View>
+
+              
+
+
+
+                  }
+
+
+             
 
               </View>
 
@@ -732,8 +809,9 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
 
    
   </Picker>
-  {errors.block && <Text style={{ color: 'red' }}>{errors.block}</Text>}
+ 
 </View>
+{errors.block && <Text style={{ color: 'red' }}>{errors.block}</Text>}
 
                 </View>
 
@@ -762,9 +840,9 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
 
    
   </Picker>
-  {errors.panchayat && <Text style={{ color: 'red' }}>{errors.panchayat}</Text>}
+  
 </View>
-
+{errors.panchayat && <Text style={{ color: 'red' }}>{errors.panchayat}</Text>}
                 </View>
 
 
@@ -794,9 +872,9 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
 
    
   </Picker>
-  {errors.village && <Text style={{ color: 'red' }}>{errors.village}</Text>}
+ 
 </View>
-
+{errors.village && <Text style={{ color: 'red' }}>{errors.village}</Text>}
                          </View>
 
 
@@ -824,9 +902,9 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
 
    
   </Picker>
-  {errors.projectArea && <Text style={{ color: 'red' }}>{errors.projectArea}</Text>}
+  
 </View>
-
+{errors.projectArea && <Text style={{ color: 'red' }}>{errors.projectArea}</Text>}
                          </View>
 
 
@@ -855,9 +933,9 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
 
    
   </Picker>
-  {errors.activity && <Text style={{ color: 'red' }}>{errors.activity}</Text>}
+ 
 </View>
-
+{errors.activity && <Text style={{ color: 'red' }}>{errors.activity}</Text>}
                          </View>
 
 
@@ -879,8 +957,8 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
         <Picker.Item key={item.key} label={item.name} value={item.name} />
       ))}
                   </Picker>
-                  {errors.nameOfActivity && <Text style={{ color: 'red' }}>{errors.nameOfActivity}</Text>}
                 </View>
+                {errors.nameOfActivity && <Text style={{ color: 'red' }}>{errors.nameOfActivity}</Text>}
 
               </View>
 
@@ -894,12 +972,13 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
                 style={{
                   width: 180,
                   borderRadius: 4,
-                  backgroundColor: '#b9d6f2',
+                  backgroundColor: '#001349',
                   flexDirection: 'row',
                   justifyContent: 'center',
                   alignItems: 'center',
                   height: 50,
-                  marginBottom: 20
+                  marginTop:10
+                  
                 }}
               >
 
@@ -916,20 +995,22 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
                 </Text>
               </TouchableOpacity>
 
+              {errors.image && <Text style={{ color: 'red' }}>{errors.image}</Text>}
 
-              <View style={{ flexDirection: "row" }}>
+
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: "row" }}>
                 {/* {console.log(imageArray[0])} */}
                 {imageArray.map((photo, index) => (
                   <View key={index} style={{ marginVertical: 10, marginRight: 5 }}>
-                    <Image source={{ uri: photo.uri }} style={{ width: 80, height: 80 }} />
+                    <Image source={{ uri: photo.uri }} style={{ width: 100, height: 100 }} />
                 
                     <Text>Accuracy: {photo.accuracy.toFixed(2)}</Text>
                     <TouchableOpacity onPress={() => deletePhoto(index)} style={styles.deleteButton}>
-                      <MaterialIcons name="delete" size={24} color="#e9ecef" />
+                      <MaterialIcons name="delete" size={24} color="#DA5050" />
                     </TouchableOpacity>
                   </View>
                 ))}
-              </View>
+              </ScrollView>
 
 
 
@@ -941,11 +1022,14 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
                     <Text>Latitude *</Text>
                     <TextInput
                       placeholder="Latitude"
-
+                        editable={false}
                       defaultValue={String(imageArray[0].latitude)}
 
 
-                      style={{ padding: 20, backgroundColor: "#fdfcfc" }}
+                      style={{ padding: 10, backgroundColor: "#fdfcfc",   borderWidth:2,
+                      borderColor:"black",
+                      borderRadius:15, marginTop:5,color:"black"}}
+
 
                     />
 
@@ -963,8 +1047,11 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
                     <Text>Longitude*</Text>
                     <TextInput
                       placeholder="Longitude"
+                      editable={false}
                       defaultValue={String(imageArray[0].longitude)}
-                      style={{ padding: 20, backgroundColor: "#fdfcfc" }}
+                      style={{ padding: 10, backgroundColor: "#fdfcfc",   borderWidth:2,
+                      borderColor:"black",
+                      borderRadius:15, marginTop:5,color:"black"}}
 
                     />
 
@@ -979,7 +1066,9 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
                       onChangeText={handleChange('shortDetail')}
                       onBlur={handleBlur('shortDetail')}
                       value={values.shortDetail}
-                      style={{ padding: 20, backgroundColor: "#fdfcfc" }}
+                      style={{ padding: 10, backgroundColor: "#fdfcfc",borderWidth:2,
+                      borderColor:"black",
+                      borderRadius:15, marginTop:5 }}
                       numberOfLines={4}
 
                     />
@@ -995,7 +1084,7 @@ if( values.block!="" && values.district !="" && values.panchayat!="" &&
 
              
 
-              <View style={{width:Dimensions.get("screen").width * 0.9 , alignItems:"center"}}>
+              <View style={{width:Dimensions.get("screen").width * 0.9 , alignItems:"center",marginTop:30}}>
               <TouchableOpacity   onPress={()=>handleSubmit()} style={{width:250,padding:15,backgroundColor:"#001349",alignItems:"center",justifyContent:"center"}}>
                   <Text style={{color:"white",fontSize:18}}>Submit Your Project</Text>
               </TouchableOpacity>
@@ -1048,6 +1137,10 @@ const styles = StyleSheet.create({
   },
   inputBox: {
     backgroundColor: "#fdfcfc",
+    borderWidth:2,
+    borderColor:"black",
+    borderRadius:15,
+    marginTop:5
 
   },
   cameraContainer: {
